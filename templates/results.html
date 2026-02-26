@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block extra_style %}
+.result-card { margin-bottom: 20px; }
+.result-card h3 { font-size: 15px; color: #333; margin-bottom: 14px; }
+.bar-row { display: flex; align-items: center; margin-bottom: 8px; gap: 10px; }
+.bar-label { width: 36px; font-size: 13px; font-weight: 700; }
+.bar-label.yes { color: #2e7d32; }
+.bar-label.no  { color: #c2185b; }
+.bar-track { flex: 1; background: #f0f0f0; border-radius: 6px; height: 22px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 6px; transition: width 1s ease; display: flex; align-items: center; padding-left: 8px; }
+.bar-fill.yes { background: #4caf50; }
+.bar-fill.no  { background: #e91e63; }
+.bar-pct { font-size: 12px; font-weight: 700; color: white; }
+.total-label { font-size: 12px; color: #aaa; margin-top: 4px; text-align: right; }
+.back-btn {
+    display: block;
+    text-align: center;
+    padding: 14px;
+    background: #1a237e;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    margin-top: 4px;
+}
+.back-btn:hover { background: #283593; }
+{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align:center; padding: 20px 32px; margin-bottom: 24px;">
+    <p style="color:#555; font-size:15px;">Live results — updated as votes come in</p>
+</div>
+
+{% for qid, data in results.items() %}
+<div class="card result-card">
+    <h3>{{ data.question }}</h3>
+    <div class="bar-row">
+        <span class="bar-label yes">YES</span>
+        <div class="bar-track">
+            <div class="bar-fill yes" style="width: {{ data.yes_pct }}%">
+                {% if data.yes_pct > 10 %}<span class="bar-pct">{{ data.yes_pct }}%</span>{% endif %}
+            </div>
+        </div>
+        <span style="font-size:13px;color:#555;width:60px;">{{ data.yes }} votes</span>
+    </div>
+    <div class="bar-row">
+        <span class="bar-label no">NO</span>
+        <div class="bar-track">
+            <div class="bar-fill no" style="width: {{ data.no_pct }}%">
+                {% if data.no_pct > 10 %}<span class="bar-pct">{{ data.no_pct }}%</span>{% endif %}
+            </div>
+        </div>
+        <span style="font-size:13px;color:#555;width:60px;">{{ data.no }} votes</span>
+    </div>
+    <p class="total-label">Total votes: {{ data.total }}</p>
+</div>
+{% endfor %}
+
+<div class="card" style="padding: 20px 32px;">
+    <a href="{{ url_for('index') }}" class="back-btn">Back to Poll</a>
+</div>
+{% endblock %}
