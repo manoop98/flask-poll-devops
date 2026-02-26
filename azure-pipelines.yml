@@ -1,7 +1,6 @@
 # =============================================
-# DevOps Lab Assignment 2
-# Multi-Stage CI/CD Pipeline (Self-Hosted Agent)
-# Flask Poll App
+# DevOps Lab Assignment 2 – Self Hosted Agent
+# Flask Poll App CI/CD
 # =============================================
 
 trigger:
@@ -22,35 +21,37 @@ stages:
   jobs:
     - job: BuildTest
       pool:
-        name: 'local-pool'          # ⭐ SELF HOSTED AGENT POOL
+        name: 'local-pool'
 
       steps:
 
-        # --- Use Python 3.11 installed on your VM ---
+        # Use Python from VM
         - script: |
             sudo ln -sf /usr/bin/python3.11 /usr/bin/python3
             sudo ln -sf /usr/bin/pip3.11 /usr/bin/pip3
-          displayName: "Select Python 3.11 from VM"
+          displayName: "Configure Python 3.11"
 
         - script: |
             python3 --version
             pip3 --version
           displayName: "Verify Python Version"
 
-        # --- Install dependencies ---
+        # Create virtual environment
         - script: |
-            pip3 install --upgrade pip
-            pip3 install -r requirements.txt
-          displayName: "Install Python Dependencies"
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+          displayName: "Create Virtual Environment & Install Dependencies"
 
-        # --- Run Pytest Tests ---
+        # Run unit tests inside venv
         - script: |
+            source venv/bin/activate
             pytest tests/ -v
           displayName: "Run Unit Tests"
 
-        # --- Package Build Artifact ---
+        # Package application
         - task: ArchiveFiles@2
-          displayName: "Archive Application"
           inputs:
             rootFolderOrFile: "$(System.DefaultWorkingDirectory)"
             includeRootFolder: false
@@ -58,7 +59,6 @@ stages:
             archiveFile: "$(Build.ArtifactStagingDirectory)/poll-app.zip"
 
         - task: PublishBuildArtifacts@1
-          displayName: "Publish Build Artifact"
           inputs:
             PathtoPublish: "$(Build.ArtifactStagingDirectory)"
             ArtifactName: "poll-app-drop"
@@ -74,10 +74,9 @@ stages:
 
   jobs:
     - deployment: DeployDevJob
-      displayName: "Deploy to DEV Environment"
       environment: "DEV"
       pool:
-        name: 'local-pool'          # ⭐ SELF HOSTED AGENT
+        name: 'local-pool'
 
       strategy:
         runOnce:
@@ -89,31 +88,20 @@ stages:
                   artifactName: "poll-app-drop"
 
               - task: AzureWebApp@1
-                displayName: "Deploy to DEV App Service"
                 inputs:
                   azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
                   appName: "$(DEV_APP_NAME)"
                   package: "$(Pipeline.Workspace)/poll-app-drop/poll-app.zip"
 
               - task: AzureAppServiceSettings@1
-                displayName: "Set DEV Environment Variables"
                 inputs:
                   azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
                   appName: "$(DEV_APP_NAME)"
                   appSettings: |
                     [
-                      {
-                        "name": "ENV_LABEL",
-                        "value": "DEV"
-                      },
-                      {
-                        "name": "ENV_COLOR",
-                        "value": "#2196F3"
-                      },
-                      {
-                        "name": "SECRET_KEY",
-                        "value": "$(DEV_SECRET_KEY)"
-                      }
+                      {"name": "ENV_LABEL", "value": "DEV"},
+                      {"name": "ENV_COLOR", "value": "#2196F3"},
+                      {"name": "SECRET_KEY", "value": "$(DEV_SECRET_KEY)"}
                     ]
 
               - script: |
@@ -131,10 +119,9 @@ stages:
 
   jobs:
     - deployment: DeployStageJob
-      displayName: "Deploy to STAGING Environment"
       environment: "STAGING"
       pool:
-        name: 'local-pool'          # ⭐ SELF HOSTED AGENT
+        name: 'local-pool'
 
       strategy:
         runOnce:
@@ -146,31 +133,20 @@ stages:
                   artifactName: "poll-app-drop"
 
               - task: AzureWebApp@1
-                displayName: "Deploy to STAGING App Service"
                 inputs:
                   azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
                   appName: "$(STAGE_APP_NAME)"
                   package: "$(Pipeline.Workspace)/poll-app-drop/poll-app.zip"
 
               - task: AzureAppServiceSettings@1
-                displayName: "Set STAGING Environment Variables"
                 inputs:
                   azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
                   appName: "$(STAGE_APP_NAME)"
                   appSettings: |
                     [
-                      {
-                        "name": "ENV_LABEL",
-                        "value": "STAGING"
-                      },
-                      {
-                        "name": "ENV_COLOR",
-                        "value": "#FF9800"
-                      },
-                      {
-                        "name": "SECRET_KEY",
-                        "value": "$(STAGE_SECRET_KEY)"
-                      }
+                      {"name": "ENV_LABEL", "value": "STAGING"},
+                      {"name": "ENV_COLOR", "value": "#FF9800"},
+                      {"name": "SECRET_KEY", "value": "$(STAGE_SECRET_KEY)"}
                     ]
 
               - script: |
