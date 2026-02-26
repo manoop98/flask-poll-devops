@@ -17,7 +17,7 @@ votes = {
 }
 
 QUESTIONS = {
-    "q1": "Do you enjoy working from home?",
+    "q1": "Do you enjoy WFH ?",
     "q2": "Is the current meeting schedule effective?",
     "q3": "Would you recommend this company to a friend?",
 }
