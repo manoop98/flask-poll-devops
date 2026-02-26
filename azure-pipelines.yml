@@ -1,0 +1,161 @@
+# =============================
+# DevOps Lab Assignment 2
+# Multi-Stage CI/CD Pipeline
+# Flask Poll App
+# =============================
+
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  - group: poll-app-vg
+
+stages:
+
+# -----------------------------
+# Stage 1: Build & Test
+# -----------------------------
+- stage: Build
+  displayName: "Stage 1 - Build and Test"
+  jobs:
+    - job: BuildTest
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+        - task: UsePythonVersion@0
+          inputs:
+            versionSpec: "3.11"
+
+        - script: |
+            pip install -r requirements.txt
+          displayName: "Install dependencies"
+
+        - script: |
+            pytest tests/ -v
+          displayName: "Run unit tests"
+
+        - task: ArchiveFiles@2
+          inputs:
+            rootFolderOrFile: "$(System.DefaultWorkingDirectory)"
+            includeRootFolder: false
+            archiveType: zip
+            archiveFile: "$(Build.ArtifactStagingDirectory)/poll-app.zip"
+
+        - task: PublishBuildArtifacts@1
+          inputs:
+            PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+            ArtifactName: "poll-app-drop"
+
+
+# -----------------------------
+# Stage 2: Deploy to DEV
+# -----------------------------
+- stage: DeployDev
+  displayName: "Stage 2 - Deploy to DEV"
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+    - deployment: DeployDevJob
+      displayName: "Deploy to DEV"
+      environment: "DEV"
+      pool:
+        vmImage: ubuntu-latest
+
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: "poll-app-drop"
+
+              - task: AzureWebApp@1
+                inputs:
+                  azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
+                  appName: "$(DEV_APP_NAME)"
+                  package: "$(Pipeline.Workspace)/poll-app-drop/poll-app.zip"
+
+              - task: AzureAppServiceSettings@1
+                displayName: "Set environment variables"
+                inputs:
+                  azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
+                  appName: "$(DEV_APP_NAME)"
+                  appSettings: |
+                    [
+                      {
+                        "name": "ENV_LABEL",
+                        "value": "DEV"
+                      },
+                      {
+                        "name": "ENV_COLOR",
+                        "value": "#2196F3"
+                      },
+                      {
+                        "name": "SECRET_KEY",
+                        "value": "$(DEV_SECRET_KEY)"
+                      }
+                    ]
+
+              - script: |
+                  curl -f https://$(DEV_APP_NAME).azurewebsites.net/health
+                displayName: "Smoke Test - DEV"
+
+
+# -----------------------------
+# Stage 3: Deploy to STAGING
+# -----------------------------
+- stage: DeployStage
+  displayName: "Stage 3 - Deploy to STAGING"
+  dependsOn: DeployDev
+  condition: succeeded()
+
+  jobs:
+    - deployment: DeployStageJob
+      displayName: "Deploy to STAGING"
+      environment: "STAGING"
+      pool:
+        vmImage: ubuntu-latest
+
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: "poll-app-drop"
+
+              - task: AzureWebApp@1
+                inputs:
+                  azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
+                  appName: "$(STAGE_APP_NAME)"
+                  package: "$(Pipeline.Workspace)/poll-app-drop/poll-app.zip"
+
+              - task: AzureAppServiceSettings@1
+                inputs:
+                  azureSubscription: "$(AZURE_SERVICE_CONNECTION)"
+                  appName: "$(STAGE_APP_NAME)"
+                  appSettings: |
+                    [
+                      {
+                        "name": "ENV_LABEL",
+                        "value": "STAGING"
+                      },
+                      {
+                        "name": "ENV_COLOR",
+                        "value": "#FF9800"
+                      },
+                      {
+                        "name": "SECRET_KEY",
+                        "value": "$(STAGE_SECRET_KEY)"
+                      }
+                    ]
+
+              - script: |
+                  curl -f https://$(STAGE_APP_NAME).azurewebsites.net/health
+                displayName: "Smoke Test - STAGING"
