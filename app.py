@@ -74,14 +74,21 @@ def results():
 
 @app.route("/health")
 def health():
-    return json.dumps({"status": "ok", "env": ENV_LABEL}), 200, {"Content-Type": "application/json"}
+    return json.dumps({"status": "ok", "env": ENV_LABEL}), 200, {
+        "Content-Type": "application/json"
+    }
 
 
 @app.route("/reset", methods=["POST"])
 def reset():
-    global votes
-    votes = {qid: {"yes": 0, "no": 0} for qid in QUESTIONS}
-    session.pop("voted", None)
+    # Reset all votes IN-PLACE (required for tests to pass)
+    for qid in votes:
+        votes[qid]["yes"] = 0
+        votes[qid]["no"] = 0
+
+    # Clear session completely
+    session.clear()
+
     return redirect(url_for("index"))
 
 
