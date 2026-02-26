@@ -1,7 +1,7 @@
 # =============================
 # DevOps Lab Assignment 2
 # Multi-Stage CI/CD Pipeline
-# Flask Poll App
+# Using Self-Hosted Agent
 # =============================
 
 trigger:
@@ -22,14 +22,16 @@ stages:
   jobs:
     - job: BuildTest
       pool:
-        vmImage: ubuntu-latest
+        name: 'local-pool'     # ⭐ SELF-HOSTED AGENT POOL
 
       steps:
         - task: UsePythonVersion@0
           inputs:
             versionSpec: "3.11"
+            addToPath: true
 
         - script: |
+            python3 -m pip install --upgrade pip
             pip install -r requirements.txt
           displayName: "Install dependencies"
 
@@ -63,7 +65,7 @@ stages:
       displayName: "Deploy to DEV"
       environment: "DEV"
       pool:
-        vmImage: ubuntu-latest
+        name: 'local-pool'    # ⭐ SELF-HOSTED AGENT
 
       strategy:
         runOnce:
@@ -119,7 +121,7 @@ stages:
       displayName: "Deploy to STAGING"
       environment: "STAGING"
       pool:
-        vmImage: ubuntu-latest
+        name: 'local-pool'     # ⭐ SELF-HOSTED AGENT
 
       strategy:
         runOnce:
